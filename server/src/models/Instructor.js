@@ -1,26 +1,27 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
-// Instructor Portal account.
-//
-// NOTE (security lab): this model is intentionally insecure. Passwords are
-// stored in PLAINTEXT (never do this in real code) so that the NoSQL injection
-// lab can demonstrate blind $regex password extraction. The apiKey / private
-// contact fields are "trophy" data that filter-injection attacks can leak.
 const instructorSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     username: { type: String, required: true, unique: true, trim: true },
-    // ⚠️ VULNERABLE (lab): plaintext password, no bcrypt hashing.
-    password: { type: String, required: true },
+    password: { type: String, required: true, select: false }, // bcrypt hash
     department: { type: String },
-    role: { type: String, default: 'instructor' }, // 'instructor' | 'superadmin'
+    role: { type: String, default: 'instructor' },
 
-    // Sensitive "trophy" fields the directory hides but injection can leak.
-    apiKey: { type: String },
-    privateEmail: { type: String },
-    privatePhone: { type: String }
+    // Private fields: hidden from every query unless explicitly requested
+    apiKey: { type: String, select: false },
+    privateEmail: { type: String, select: false },
+    privatePhone: { type: String, select: false }
   },
   { timestamps: true }
 );
+
+// Hash the password on save. Skipped if the password wasn't changed,
+// so an existing hash is never hashed twice.
+instructorSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
+  this.password = await bcrypt.hash(this.password, 10);
+});
 
 export const Instructor = mongoose.model('Instructor', instructorSchema);

@@ -4,8 +4,8 @@ import mongoose from 'mongoose';
 import { connectDB } from '../config/db.js';
 import { Instructor } from '../models/Instructor.js';
 
-// Seed data for the Instructor Portal NoSQL injection lab.
-// Passwords are plaintext ON PURPOSE (see Instructor model / Flow.md).
+// Plain-text passwords exist only in this seed file for testing logins.
+// The model's pre('save') hook hashes them, so only hashes reach the database.
 const instructors = [
   {
     name: 'Prof. Alice Smith',
@@ -35,7 +35,6 @@ const instructors = [
     privatePhone: '+1-555-0103'
   },
   {
-    // The high-value target: the only superadmin, holding the API key.
     name: 'Portal Administrator',
     username: 'admin',
     password: 'S3cr3t-Admin-Pw!',
@@ -50,7 +49,9 @@ const instructors = [
 async function run() {
   await connectDB();
   await Instructor.deleteMany({});
-  const created = await Instructor.insertMany(instructors);
+
+  // create() (not insertMany) so the pre('save') hash hook runs
+  const created = await Instructor.create(instructors);
   console.log(`Seeded ${created.length} instructor(s):`);
   for (const i of created) {
     console.log(`  - ${i.username} (${i.role})`);
